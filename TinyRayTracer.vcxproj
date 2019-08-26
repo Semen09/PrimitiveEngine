@@ -126,6 +126,7 @@
     <ClInclude Include="geometry.h" />
     <ClInclude Include="gmt.h" />
     <ClInclude Include="model.h" />
+    <ClInclude Include="profiler.h" />
     <ClInclude Include="stb_image_write.h" />
     <ClInclude Include="tgaimage.h" />
   </ItemGroup>

@@ -30,6 +30,9 @@
     <ClInclude Include="gmt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="profiler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="tinyraytracer.cpp">

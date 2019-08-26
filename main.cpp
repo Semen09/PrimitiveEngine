@@ -6,12 +6,13 @@
 #include <array>
 #include <algorithm>
 #include <math.h>
+#include "profiler.h"
 
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red   = TGAColor(255, 0,   0,   255);
 Model* model = NULL;
-const int width = 100;
-const int height = 100;
+const int width = 1000;
+const int height = 1000;
 
 struct Point {
 	int x;
@@ -101,6 +102,7 @@ public:
 	}
 
 	void BetterDraw(TGAImage& image, const TGAColor& color) {
+		/*if (points[0].y == points[1].y && points[0].y == points[1].y) return;
 		int xMax, xMin;
 		if (points[0].x > points[1].x) {
 			xMax = (points[0].x > points[2].x) ? points[0].x : points[2].x;
@@ -113,8 +115,29 @@ public:
 		for (int x = xMin; x <= xMax; x++) {
 			for (int y = points[0].y; y <= points[2].y; y++) {
 				if (InTriangle({ x, y })) {
-					image.set(x, y, red);
+					image.set(x, y, color);
 				}
+			}
+		}*/
+		auto t0 = points[0];
+		auto t1 = points[1];
+		auto t2 = points[2];
+
+		if (t0.y == t1.y && t0.y == t2.y) return;
+		if (t0.y > t1.y) std::swap(t0, t1);
+		if (t0.y > t2.y) std::swap(t0, t2);
+		if (t1.y > t2.y) std::swap(t1, t2);
+		int total_height = t2.y - t0.y;
+		for (int i = 0; i < total_height; i++) {
+			bool second_half = i > t1.y - t0.y || t1.y == t0.y;
+			int segment_height = second_half ? t2.y - t1.y : t1.y - t0.y;
+			float alpha = (float)i / total_height;
+			float beta = (float)(i - (second_half ? t1.y - t0.y : 0)) / segment_height; // be careful: with above conditions no division by zero here
+			Vec2i A = t0 + (t2 - t0) * alpha;
+			Vec2i B = second_half ? t1 + (t2 - t1) * beta : t0 + (t1 - t0) * beta;
+			if (A.x > B.x) std::swap(A, B);
+			for (int j = A.x; j <= B.x; j++) {
+				image.set(j, t0.y + i, color); // attention, due to int casts t0.y+i != A.y
 			}
 		}
 	}
@@ -137,13 +160,18 @@ int main(int argc, char** argv) {
 			DrawLine(x0, y0, x1, y1, image, white);
 		}
 	}*/
-	Triangle a({ 0, 0 }, { 30, 30 }, { 50, 20 });
-	Triangle b({90, 90}, {50, 80}, {70, 50});
-
-	a.BetterDraw(image, red);
-	b.BetterDraw(image, red);
-	//a.Draw(image, red);
-	//b.Draw(image, red);
+	{
+		LogDuration lg;
+		for (int i = 0; i < model->nfaces(); i++) {
+			std::vector<int> face = model->face(i);
+			Vec2i screen_coords[3];
+			for (int j = 0; j < 3; j++) {
+				Vec3f world_coords = model->vert(face[j]);
+				screen_coords[j] = Vec2i((world_coords.x + 1.) * width / 2., (world_coords.y + 1.) * height / 2.);
+			}
+			Triangle(screen_coords[0], screen_coords[1], screen_coords[2]).BetterDraw(image, TGAColor(rand() % 255, rand() % 255, rand() % 255, 255));
+		}
+	}
 
 	image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
 	image.write_tga_file("output.tga");
