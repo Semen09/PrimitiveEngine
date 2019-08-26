@@ -95,51 +95,54 @@ public:
 			C.Swap(B);
 		}
 
-		float w1 = (float)(P.y * C.x - P.x * C.y) / (B.y * C.x - B.x * C.y);
-		float w2 = ((float)P.y - w1 * B.y) / C.y;
+		float w1 = static_cast<float>(P.y * C.x - P.x * C.y) / (B.y * C.x - B.x * C.y);
+		if (w1 > 1 && w1 < 0) return false;
+		float w2 = static_cast<float>(P.y - w1 * B.y) / C.y;
 
 		return w1 >= 0 && w2 >= 0 && (w1 + w2) <= 1;
 	}
 
+	bool IsInTriangle(Vec2i p) {
+		int aSide = (points[0].y - points[1].y) * p.x + (points[1].x - points[0].x) * p.y + (points[0].x * points[1].y - points[1].x * points[0].y);
+		int bSide = (points[1].y - points[2].y) * p.x + (points[2].x - points[1].x) * p.y + (points[1].x * points[2].y - points[2].x * points[1].y);
+		int cSide = (points[2].y - points[0].y) * p.x + (points[0].x - points[2].x) * p.y + (points[2].x * points[0].y - points[0].x * points[2].y);
+
+		return (aSide >= 0 && bSide >= 0 && cSide >= 0) || (aSide < 0 && bSide < 0 && cSide < 0);
+	}
+
 	void BetterDraw(TGAImage& image, const TGAColor& color) {
-		/*if (points[0].y == points[1].y && points[0].y == points[1].y) return;
-		int xMax, xMin;
-		if (points[0].x > points[1].x) {
-			xMax = (points[0].x > points[2].x) ? points[0].x : points[2].x;
-			xMin = (points[1].x > points[2].x) ? points[2].x : points[1].x;
-		}
-		else {
-			xMax = (points[1].x > points[2].x) ? points[1].x : points[2].x;
-			xMin = (points[0].x > points[2].x) ? points[2].x : points[0].x;
-		}
+		if (points[0].y == points[1].y && points[0].y == points[1].y) return;
+		int xMax = std::max<int>({ points[0].x, points[1].x, points[2].x });
+		int xMin = std::min<int>({ points[0].x, points[1].x, points[2].x });
 		for (int x = xMin; x <= xMax; x++) {
 			for (int y = points[0].y; y <= points[2].y; y++) {
 				if (InTriangle({ x, y })) {
 					image.set(x, y, color);
 				}
 			}
-		}*/
-		auto t0 = points[0];
-		auto t1 = points[1];
-		auto t2 = points[2];
-
-		if (t0.y == t1.y && t0.y == t2.y) return;
-		if (t0.y > t1.y) std::swap(t0, t1);
-		if (t0.y > t2.y) std::swap(t0, t2);
-		if (t1.y > t2.y) std::swap(t1, t2);
-		int total_height = t2.y - t0.y;
-		for (int i = 0; i < total_height; i++) {
-			bool second_half = i > t1.y - t0.y || t1.y == t0.y;
-			int segment_height = second_half ? t2.y - t1.y : t1.y - t0.y;
-			float alpha = (float)i / total_height;
-			float beta = (float)(i - (second_half ? t1.y - t0.y : 0)) / segment_height; // be careful: with above conditions no division by zero here
-			Vec2i A = t0 + (t2 - t0) * alpha;
-			Vec2i B = second_half ? t1 + (t2 - t1) * beta : t0 + (t1 - t0) * beta;
-			if (A.x > B.x) std::swap(A, B);
-			for (int j = A.x; j <= B.x; j++) {
-				image.set(j, t0.y + i, color); // attention, due to int casts t0.y+i != A.y
-			}
 		}
+
+		//auto t0 = points[0];
+		//auto t1 = points[1];
+		//auto t2 = points[2];
+
+		//if (t0.y == t1.y && t0.y == t2.y) return;
+		//if (t0.y > t1.y) std::swap(t0, t1);
+		//if (t0.y > t2.y) std::swap(t0, t2);
+		//if (t1.y > t2.y) std::swap(t1, t2);
+		//int total_height = t2.y - t0.y;
+		//for (int i = 0; i < total_height; i++) {
+		//	bool second_half = i > t1.y - t0.y || t1.y == t0.y;
+		//	int segment_height = second_half ? t2.y - t1.y : t1.y - t0.y;
+		//	float alpha = (float)i / total_height;
+		//	float beta = (float)(i - (second_half ? t1.y - t0.y : 0)) / segment_height; // be careful: with above conditions no division by zero here
+		//	Vec2i A = t0 + (t2 - t0) * alpha;
+		//	Vec2i B = second_half ? t1 + (t2 - t1) * beta : t0 + (t1 - t0) * beta;
+		//	if (A.x > B.x) std::swap(A, B);
+		//	for (int j = A.x; j <= B.x; j++) {
+		//		image.set(j, t0.y + i, color); // attention, due to int casts t0.y+i != A.y
+		//	}
+		//}
 	}
 private:
 	std::array<Vec2i, 3> points;
