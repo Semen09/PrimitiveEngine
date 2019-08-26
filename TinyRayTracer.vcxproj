@@ -125,8 +125,11 @@
   <ItemGroup>
     <ClInclude Include="geometry.h" />
     <ClInclude Include="stb_image_write.h" />
+    <ClInclude Include="tgaimage.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="tgaimage.cpp" />
     <ClCompile Include="tinyraytracer.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
