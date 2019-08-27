@@ -78,7 +78,7 @@ public:
 		if (points[1].y > points[2].y) points[1].Swap(points[2]);
 	}
 
-	void Draw(TGAImage& image, const TGAColor& color) {
+	void DrawWithoutFill(TGAImage& image, const TGAColor& color) {
 		DrawLine(points[0].x, points[0].y, points[1].x, points[1].y, image, color);
 		DrawLine(points[2].x, points[2].y, points[1].x, points[1].y, image, color);
 		DrawLine(points[2].x, points[2].y, points[0].x, points[0].y, image, white);
@@ -102,7 +102,7 @@ public:
 		return w1 >= 0 && w2 >= 0 && (w1 + w2) <= 1;
 	}
 
-	bool IsInTriangle(Vec2i p) {
+	bool InTriangleFastAlgorithm(Vec2i p) {
 		int aSide = (points[0].y - points[1].y) * p.x + (points[1].x - points[0].x) * p.y + (points[0].x * points[1].y - points[1].x * points[0].y);
 		int bSide = (points[1].y - points[2].y) * p.x + (points[2].x - points[1].x) * p.y + (points[1].x * points[2].y - points[2].x * points[1].y);
 		int cSide = (points[2].y - points[0].y) * p.x + (points[0].x - points[2].x) * p.y + (points[2].x * points[0].y - points[0].x * points[2].y);
@@ -110,7 +110,7 @@ public:
 		return (aSide >= 0 && bSide >= 0 && cSide >= 0) || (aSide < 0 && bSide < 0 && cSide < 0);
 	}
 
-	void BetterDraw(TGAImage& image, const TGAColor& color) {
+	void DrawWithFill(TGAImage& image, const TGAColor& color) {
 		if (points[0].y == points[1].y && points[0].y == points[1].y) return;
 		int xMax = std::max<int>({ points[0].x, points[1].x, points[2].x });
 		int xMin = std::min<int>({ points[0].x, points[1].x, points[2].x });
@@ -121,28 +121,33 @@ public:
 				}
 			}
 		}
+	}
+	void DrawFastAlgorithm(TGAImage& image, const TGAColor& color) {
+		if (points[0].y == points[1].y && points[0].y == points[1].y) return;
+		auto t0 = points[0];
+		auto t1 = points[1];
+		auto t2 = points[2];
 
-		//auto t0 = points[0];
-		//auto t1 = points[1];
-		//auto t2 = points[2];
-
-		//if (t0.y == t1.y && t0.y == t2.y) return;
-		//if (t0.y > t1.y) std::swap(t0, t1);
-		//if (t0.y > t2.y) std::swap(t0, t2);
-		//if (t1.y > t2.y) std::swap(t1, t2);
-		//int total_height = t2.y - t0.y;
-		//for (int i = 0; i < total_height; i++) {
-		//	bool second_half = i > t1.y - t0.y || t1.y == t0.y;
-		//	int segment_height = second_half ? t2.y - t1.y : t1.y - t0.y;
-		//	float alpha = (float)i / total_height;
-		//	float beta = (float)(i - (second_half ? t1.y - t0.y : 0)) / segment_height; // be careful: with above conditions no division by zero here
-		//	Vec2i A = t0 + (t2 - t0) * alpha;
-		//	Vec2i B = second_half ? t1 + (t2 - t1) * beta : t0 + (t1 - t0) * beta;
-		//	if (A.x > B.x) std::swap(A, B);
-		//	for (int j = A.x; j <= B.x; j++) {
-		//		image.set(j, t0.y + i, color); // attention, due to int casts t0.y+i != A.y
-		//	}
-		//}
+		if (t0.y == t1.y && t0.y == t2.y) return;
+		if (t0.y > t1.y) std::swap(t0, t1);
+		if (t0.y > t2.y) std::swap(t0, t2);
+		if (t1.y > t2.y) std::swap(t1, t2);
+		int total_height = t2.y - t0.y;
+		for (int i = 0; i < total_height; i++) {
+			bool second_half = i > t1.y - t0.y || t1.y == t0.y;
+			int segment_height = second_half ? t2.y - t1.y : t1.y - t0.y;
+			float alpha = (float)i / total_height;
+			float beta = (float)(i - (second_half ? t1.y - t0.y : 0)) / segment_height; // be careful: with above conditions no division by zero here
+			Vec2i A = t0 + (t2 - t0) * alpha;
+			Vec2i B = second_half ? t1 + (t2 - t1) * beta : t0 + (t1 - t0) * beta;
+			if (A.x > B.x) std::swap(A, B);
+			for (int j = A.x; j <= B.x; j++) {
+				image.set(j, t0.y + i, color); // attention, due to int casts t0.y+i != A.y
+			}
+		}
+	}
+	void DrawWithZBuffer(TGAImage& image, const TGAColor& color) {
+		
 	}
 private:
 	std::array<Vec2i, 3> points;
@@ -165,18 +170,26 @@ int main(int argc, char** argv) {
 	}*/
 	{
 		LogDuration lg;
+		Vec3f light_dir(0, 0, -1);
 		for (int i = 0; i < model->nfaces(); i++) {
 			std::vector<int> face = model->face(i);
 			Vec2i screen_coords[3];
+			Vec3f world_coords[3];
 			for (int j = 0; j < 3; j++) {
-				Vec3f world_coords = model->vert(face[j]);
-				screen_coords[j] = Vec2i((world_coords.x + 1.) * width / 2., (world_coords.y + 1.) * height / 2.);
+				Vec3f v = model->vert(face[j]);
+				screen_coords[j] = Vec2i((v.x + 1.) * width / 2., (v.y + 1.) * height / 2.);
+				world_coords[j] = v;
 			}
-			Triangle(screen_coords[0], screen_coords[1], screen_coords[2]).BetterDraw(image, TGAColor(rand() % 255, rand() % 255, rand() % 255, 255));
+			Vec3f n = (world_coords[2] - world_coords[0]) ^ (world_coords[1] - world_coords[0]);
+			n.normalize();
+			float intensity = n * light_dir;
+			if (intensity > 0) {
+				Triangle(screen_coords[0], screen_coords[1], screen_coords[2]).DrawWithFill(image, TGAColor(intensity * 255, intensity * 255, intensity * 255, 255));
+			}
 		}
 	}
-
-	image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
+	// Origin at the left bottom corner of the image
+	image.flip_vertically();
 	image.write_tga_file("output.tga");
 	delete model;
 	return 0;
